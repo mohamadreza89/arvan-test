@@ -20,7 +20,7 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
      * @var array
      */
     protected $fillable = [
-        'username', 'email', 'password', 'bio', 'image', 'status'
+        'username', 'email', 'password', 'bio', 'image', 'status', 'status_changed_at'
     ];
 
     /**
@@ -116,7 +116,7 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
 
     public function deactivate()
     {
-        $this->update(["status" => false]);
+        $this->update(["status" => false, "status_changed_at" => now()]);
     }
 
     public function isActive()

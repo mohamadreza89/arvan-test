@@ -6,6 +6,7 @@ use App\Article;
 use App\Notifications\BalanceWarningNotification;
 use App\Services\AccountingService;
 use App\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -153,6 +154,46 @@ class AccountingServiceTest extends TestCase
         $response = $this->submitComment($article, $token);
 
         $response->assertStatus(403);
+    }
+
+    public function testInactiveUsersAfter24HoursCanBeDeletedWithCommandLine()
+    {
+        $user = factory(User::class)->create([
+            "status" => false,
+            "status_changed_at" => now()->subHours(26)
+        ]);
+
+        $this->assertDatabaseHas("users", [
+            "id" => $user->id,
+            "status" => false
+        ]);
+
+        $this->artisan("delete:inactive-users");
+
+        $this->assertDatabaseMissing("users", [
+            "id" => $user->id,
+            "status" => false
+        ]);
+    }
+
+    public function testInactiveUsersBefore24HoursMustNotBeDeletedWithCommandLine()
+    {
+        $user = factory(User::class)->create([
+            "status" => false,
+            "status_changed_at" => now()->subHours(23)
+        ]);
+
+        $this->assertDatabaseHas("users", [
+            "id" => $user->id,
+            "status" => false
+        ]);
+
+        $this->artisan("delete:inactive-users");
+
+        $this->assertDatabaseHas("users", [
+            "id" => $user->id,
+            "status" => false
+        ]);
     }
 
     /**

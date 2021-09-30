@@ -15,6 +15,7 @@ class AddStatusColumnToUsersTable extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->boolean("status")->default(true);
+            $table->dateTime("status_changed_at")->nullable();
         });
     }
 
@@ -27,6 +28,7 @@ class AddStatusColumnToUsersTable extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn("status");
+            $table->dropColumn("status_changed_at");
         });
     }
 }
