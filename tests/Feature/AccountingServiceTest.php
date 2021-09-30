@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Article;
+use App\Comment;
+use App\Invoice;
 use App\Notifications\BalanceWarningNotification;
 use App\Services\AccountingService;
 use App\User;
@@ -193,6 +195,50 @@ class AccountingServiceTest extends TestCase
         $this->assertDatabaseHas("users", [
             "id" => $user->id,
             "status" => false
+        ]);
+    }
+
+    public function testAnInvoiceShouldBeIssuedForEachTransactionThatAUserHasForArticles()
+    {
+        $response       = $this->registerUser();
+        $token          = $this->token($response);
+        $user           = $this->getUser();
+        Invoice::where("user_id", $user->id)->delete();
+        $response = $this->post("/api/articles", [
+            "article" => [
+                "title"       => "my first article",
+                "description" => " Lorem ipsum dolor sit amet.",
+                "body"        => " Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+            ],
+        ], [
+            "Accept"        => "application/json",
+            "Authorization" => "Bearer $token",
+        ]);
+        $this->assertDatabaseHas("invoices", [
+            "user_id" => $user->id,
+            "amount" => 5000,
+            "reason_type" => Article::class,
+        ]);
+    }
+
+    public function testAnInvoiceShouldBeIssuedForEachTransactionThatAUserHasForComment()
+    {
+        $response       = $this->registerUser();
+        $token          = $this->token($response);
+        $user           = $this->getUser();
+        Invoice::where("user_id", $user->id)->delete();
+        $article = factory(Article::class)->create(["user_id" => $user->id]);
+        factory(Comment::class, 5)->create(["article_id" => $article->id, "user_id" => $user->id]);
+        $this->assertDatabaseMissing("invoices", [
+            "user_id" => $user->id,
+            "amount" => 5000,
+            "reason_type" => Comment::class,
+        ]);
+        $this->submitComment($article, $token);
+        $this->assertDatabaseHas("invoices", [
+            "user_id" => $user->id,
+            "amount" => 5000,
+            "reason_type" => Comment::class,
         ]);
     }
 

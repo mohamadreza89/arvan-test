@@ -5,6 +5,7 @@ namespace App;
 use App\Contracts\Notifiable as NotifiableInterface;
 use App\RealWorld\Follow\Followable;
 use App\RealWorld\Favorite\HasFavorite;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
@@ -55,7 +56,7 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
     /**
      * Get all the articles by the user.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function articles()
     {
@@ -65,7 +66,7 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
     /**
      * Get all the comments by the user.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function comments()
     {
@@ -75,7 +76,7 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
     /**
      * Get all the articles of the following users.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function feed()
     {
@@ -122,5 +123,10 @@ class User extends Authenticatable implements JWTSubject, NotifiableInterface
     public function isActive()
     {
         return $this->status;
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Article;
 use App\Comment;
+use App\Concerns\CreatesInvoice;
 use App\Http\Requests\Api\CreateComment;
 use App\Http\Requests\Api\DeleteComment;
 use App\RealWorld\Transformers\CommentTransformer;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 class CommentController extends ApiController
 {
+    use CreatesInvoice;
+
     /**
      * CommentController constructor.
      *
@@ -60,6 +63,8 @@ class CommentController extends ApiController
             ]);
 
             $this->deductCommentCost($commentCost, $accountingService);
+            $this->createInvoice(auth()->user(), $commentCost, $comment);
+
             return $comment;
         });
         return $this->respondWithTransformer($comment);

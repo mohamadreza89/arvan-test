@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Concerns\CreatesInvoice;
+use App\Invoice;
 use App\Services\AccountingService;
 use App\Services\CostService;
 use App\Tag;
@@ -12,11 +14,13 @@ use App\Http\Requests\Api\CreateArticle;
 use App\Http\Requests\Api\UpdateArticle;
 use App\Http\Requests\Api\DeleteArticle;
 use App\RealWorld\Transformers\ArticleTransformer;
+use App\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 
 class ArticleController extends ApiController
 {
+    use CreatesInvoice;
     /**
      * ArticleController constructor.
      *
@@ -66,6 +70,9 @@ class ArticleController extends ApiController
                 'body' => $request->input('article.body'),
             ]);
             $accountingService->deductFromWallet($user->id, $cost->articleCost($user->id));
+            $this->createInvoice($user, $cost->articleCost($user->id), $article);
+
+
             return $article;
         });
 
@@ -129,4 +136,6 @@ class ArticleController extends ApiController
     {
         return $accountingService->userBalance($user->id) >= $cost;
     }
+
+
 }
