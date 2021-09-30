@@ -16,7 +16,7 @@ $factory->define(App\User::class, function (\Faker\Generator $faker) {
     return [
         'username' => str_replace('.', '', $faker->unique()->userName),
         'email' => $faker->unique()->safeEmail,
-        'password' => 'secret',
+        'password' => bcrypt('secret'),
         'bio' => $faker->sentence,
         'image' => 'https://cdn.worldvectorlogo.com/logos/laravel.svg',
     ];

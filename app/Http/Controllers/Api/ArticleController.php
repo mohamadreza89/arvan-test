@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\AccountingService;
+use App\Services\CostService;
 use App\Tag;
 use App\Article;
 use App\RealWorld\Paginate\Paginate;
@@ -10,6 +12,8 @@ use App\Http\Requests\Api\CreateArticle;
 use App\Http\Requests\Api\UpdateArticle;
 use App\Http\Requests\Api\DeleteArticle;
 use App\RealWorld\Transformers\ArticleTransformer;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\DB;
 
 class ArticleController extends ApiController
 {
@@ -43,17 +47,28 @@ class ArticleController extends ApiController
      * Create a new article and return the article if successful.
      *
      * @param CreateArticle $request
+     * @param AccountingService $accountingService
+     * @param CostService $cost
+     *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(CreateArticle $request)
+    public function store(CreateArticle $request, AccountingService $accountingService, CostService $cost)
     {
         $user = auth()->user();
 
-        $article = $user->articles()->create([
-            'title' => $request->input('article.title'),
-            'description' => $request->input('article.description'),
-            'body' => $request->input('article.body'),
-        ]);
+        if (! $this->checkBalance($user ,$accountingService, $cost->articleCost($user->id))){
+            return response()->json(["message"=>"insufficient balance"])->setStatusCode(406);
+        }
+        $article = DB::transaction(function () use ($accountingService, $cost, $user, $request){
+            $article = $user->articles()->create([
+                'title' => $request->input('article.title'),
+                'description' => $request->input('article.description'),
+                'body' => $request->input('article.body'),
+            ]);
+            $accountingService->deductFromWallet($user->id, $cost->articleCost($user->id));
+            return $article;
+        });
+
 
         $inputTags = $request->input('article.tagList');
 
@@ -108,5 +123,10 @@ class ArticleController extends ApiController
         $article->delete();
 
         return $this->respondSuccess();
+    }
+
+    protected function checkBalance(Authenticatable $user, AccountingService $accountingService, $cost): bool
+    {
+        return $accountingService->userBalance($user->id) >= $cost;
     }
 }

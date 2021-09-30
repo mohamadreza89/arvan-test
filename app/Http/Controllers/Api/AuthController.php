@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\AccountingService;
 use Auth;
 use App\User;
 use App\Http\Requests\Api\LoginUser;
 use App\Http\Requests\Api\RegisterUser;
 use App\RealWorld\Transformers\UserTransformer;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends ApiController
 {
@@ -44,14 +46,22 @@ class AuthController extends ApiController
      * @param RegisterUser $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function register(RegisterUser $request)
+    public function register(RegisterUser $request, AccountingService $accountingService)
     {
-        $user = User::create([
-            'username' => $request->input('user.username'),
-            'email' => $request->input('user.email'),
-            'password' => bcrypt($request->input('user.password')),
-        ]);
+        try {
+            DB::beginTransaction();
+            $user = User::create([
+                'username' => $request->input('user.username'),
+                'email'    => $request->input('user.email'),
+                'password' => bcrypt($request->input('user.password')),
+            ]);
 
+            $accountingService->chargeWallet($user->id,100000);
+            DB::commit();
+        }catch (\Exception $exception){
+            DB::rollback();
+            throw $exception;
+        }
         return $this->respondWithTransformer($user);
     }
 }

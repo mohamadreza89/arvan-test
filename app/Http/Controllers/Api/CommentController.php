@@ -7,6 +7,9 @@ use App\Comment;
 use App\Http\Requests\Api\CreateComment;
 use App\Http\Requests\Api\DeleteComment;
 use App\RealWorld\Transformers\CommentTransformer;
+use App\Services\AccountingService;
+use App\Services\CostService;
+use Illuminate\Support\Facades\DB;
 
 class CommentController extends ApiController
 {
@@ -43,13 +46,22 @@ class CommentController extends ApiController
      * @param Article $article
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(CreateComment $request, Article $article)
+    public function store(CreateComment $request, Article $article, CostService $costService, AccountingService $accountingService)
     {
-        $comment = $article->comments()->create([
-            'body' => $request->input('comment.body'),
-            'user_id' => auth()->id(),
-        ]);
+        $commentCost = $costService->commentCost(auth()->id());
+        if (! $this->checkBalance(auth()->id() ,$accountingService, $commentCost)){
+            return response()->json(["message"=>"insufficient balance"])->setStatusCode(406);
+        }
 
+        $comment = DB::transaction(function () use ($accountingService, $commentCost, $article, $request) {
+            $comment = $article->comments()->create([
+                'body'    => $request->input('comment.body'),
+                'user_id' => auth()->id(),
+            ]);
+
+            $this->deductCommentCost($commentCost, $accountingService);
+            return $comment;
+        });
         return $this->respondWithTransformer($comment);
     }
 
@@ -66,5 +78,20 @@ class CommentController extends ApiController
         $comment->delete();
 
         return $this->respondSuccess();
+    }
+
+    /**
+     * @param $commentCost
+     * @param AccountingService $accountingService
+     */
+    protected function deductCommentCost($commentCost, AccountingService $accountingService)
+    {
+        $commentCost && $accountingService->deductFromWallet(auth()->id(), $commentCost);
+
+    }
+
+    protected function checkBalance(int $id, AccountingService $accountingService, int $commentCost)
+    {
+        return $accountingService->userBalance($id) >= $commentCost;
     }
 }
