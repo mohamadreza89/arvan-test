@@ -14,6 +14,11 @@ class CreateArticle extends ApiRequest
         return $this->get('article') ?: [];
     }
 
+    public function authorize()
+    {
+        return auth()->user()->isActive();
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

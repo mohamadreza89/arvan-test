@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Contracts\Notifiable as NotifiableInterface;
 use App\RealWorld\Follow\Followable;
 use App\RealWorld\Favorite\HasFavorite;
 use Illuminate\Notifications\Notifiable;
@@ -9,7 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, NotifiableInterface
 {
     use Notifiable, Followable, HasFavorite;
 
@@ -19,7 +20,7 @@ class User extends Authenticatable implements JWTSubject
      * @var array
      */
     protected $fillable = [
-        'username', 'email', 'password', 'bio', 'image'
+        'username', 'email', 'password', 'bio', 'image', 'status'
     ];
 
     /**
@@ -111,5 +112,15 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    public function deactivate()
+    {
+        $this->update(["status" => false]);
+    }
+
+    public function isActive()
+    {
+        return $this->status;
     }
 }

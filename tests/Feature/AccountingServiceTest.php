@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Article;
+use App\Notifications\BalanceWarningNotification;
 use App\Services\AccountingService;
 use App\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,6 +102,57 @@ class AccountingServiceTest extends TestCase
         $this->submitComment($article, $token);
         $currentBalance = $this->accountingService->userBalance($user->id);
         $this->assertEquals(5000, $initialBalance - $currentBalance);
+    }
+
+    public function testUserShouldReceiveNotificationWhenBalanceIsLessThan20000()
+    {
+        Notification::fake();
+        $response       = $this->registerUser();
+        $token          = $this->token($response);
+        $user           = $this->getUser();
+
+        $initial = $this->accountingService->userBalance($user->id);
+        $this->accountingService->deductFromWallet($user->id, $initial- 15000);
+
+        Notification::assertSentTo([$user], BalanceWarningNotification::class);
+    }
+
+    public function testUserShouldNotReceiveNotificationWhenBalanceIsHigherThan20000()
+    {
+        Notification::fake();
+        $response       = $this->registerUser();
+        $token          = $this->token($response);
+        $user           = $this->getUser();
+
+        $initial = $this->accountingService->userBalance($user->id);
+        $this->accountingService->deductFromWallet($user->id, $initial- 30000);
+
+        Notification::assertNotSentTo([$user], BalanceWarningNotification::class);
+    }
+
+    public function testUserCanNotCreateArticleOrCommentWhenHeIsInactive()
+    {
+        $response       = $this->registerUser();
+        $token          = $this->token($response);
+        $user           = $this->getUser();
+        $user->deactivate();
+        $response = $this->post("/api/articles", [
+            "article" => [
+                "title"       => "my first article",
+                "description" => " Lorem ipsum dolor sit amet.",
+                "body"        => " Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+            ],
+        ], [
+            "Accept"        => "application/json",
+            "Authorization" => "Bearer $token",
+        ]);
+
+        $response->assertStatus(403);
+
+        $article = factory(Article::class)->create(["user_id" => $user->id]);
+        $response = $this->submitComment($article, $token);
+
+        $response->assertStatus(403);
     }
 
     /**

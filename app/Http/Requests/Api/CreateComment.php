@@ -13,7 +13,11 @@ class CreateComment extends ApiRequest
     {
         return $this->get('comment') ?: [];
     }
-    
+
+    public function authorize()
+    {
+        return auth()->user()->isActive();
+    }
     /**
      * Get the validation rules that apply to the request.
      *
