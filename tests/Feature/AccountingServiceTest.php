@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AccountingServiceTest extends TestCase
 {
+    use RefreshDatabase;
 
     /**
      * @var AccountingService
@@ -34,14 +35,12 @@ class AccountingServiceTest extends TestCase
 
     public function testUserShouldGet100kTomanAfterRegistration()
     {
-        $response = $this->post("/api/users", [
+        $response = $this->postJson("/api/users", [
             "user" => [
                 "username" => "testuser",
                 "email"    => "test@test.com",
                 "password" => "test1234",
             ],
-        ], [
-            "Accept" => "application/json",
         ]);
 
         $user = $this->getUser();
@@ -69,14 +68,13 @@ class AccountingServiceTest extends TestCase
         $user           = $this->getUser();
         $initialBalance = $this->accountingService->userBalance($user->id);
 
-        $response = $this->post("/api/articles", [
+        $response = $this->postJson("/api/articles", [
             "article" => [
                 "title"       => "my first article",
                 "description" => " Lorem ipsum dolor sit amet.",
                 "body"        => " Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
             ],
         ], [
-            "Accept"        => "application/json",
             "Authorization" => "Bearer $token",
         ]);
 
@@ -139,14 +137,15 @@ class AccountingServiceTest extends TestCase
         $token          = $this->token($response);
         $user           = $this->getUser();
         $user->deactivate();
-        $response = $this->post("/api/articles", [
+
+        $this->actingAs($user);
+        $response = $this->postJson("/api/articles", [
             "article" => [
                 "title"       => "my first article",
                 "description" => " Lorem ipsum dolor sit amet.",
                 "body"        => " Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
             ],
         ], [
-            "Accept"        => "application/json",
             "Authorization" => "Bearer $token",
         ]);
 
@@ -247,14 +246,12 @@ class AccountingServiceTest extends TestCase
      */
     protected function registerUser(): \Illuminate\Foundation\Testing\TestResponse
     {
-        return $this->post("/api/users", [
+        return $this->postJson("/api/users", [
             "user" => [
                 "username" => "testuser",
                 "email"    => "test@test.com",
                 "password" => "test1234",
             ],
-        ], [
-            "Accept" => "application/json",
         ]);
     }
 

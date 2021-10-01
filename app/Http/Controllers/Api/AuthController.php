@@ -56,7 +56,7 @@ class AuthController extends ApiController
                 'password' => bcrypt($request->input('user.password')),
             ]);
 
-            $accountingService->chargeWallet($user->id,100000);
+            $accountingService->chargeWallet($user->id,config("costs.first_signup"));
             DB::commit();
         }catch (\Exception $exception){
             DB::rollback();

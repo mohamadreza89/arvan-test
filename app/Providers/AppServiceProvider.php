@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Observers\TransactionObserver;
+use App\Services\CostService;
 use App\Transaction;
 use Schema;
 use Illuminate\Support\ServiceProvider;
@@ -32,5 +33,9 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment() !== 'production') {
             $this->app->register(IdeHelperServiceProvider::class);
         }
+
+        $this->app->singleton(CostService::class, function (){
+            return new CostService(config("costs.comment"), config("costs.article"));
+        });
     }
 }
