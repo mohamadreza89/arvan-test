@@ -14,7 +14,9 @@ use App\Http\Requests\Api\CreateArticle;
 use App\Http\Requests\Api\UpdateArticle;
 use App\Http\Requests\Api\DeleteArticle;
 use App\RealWorld\Transformers\ArticleTransformer;
+use App\UseCases\ArticleCreation;
 use App\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 
@@ -52,30 +54,17 @@ class ArticleController extends ApiController
      *
      * @param CreateArticle $request
      * @param AccountingService $accountingService
-     * @param CostService $cost
+     * @param CostService $costService
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(CreateArticle $request, AccountingService $accountingService, CostService $cost)
+    public function store(CreateArticle $request, ArticleCreation $articleCreation )
     {
-        $user = auth()->user();
-
-        if (! $this->checkBalance($user ,$accountingService, $cost->articleCost($user->id))){
+        try {
+            $article = $articleCreation->fire(auth()->user(), $request->all());
+        }catch (AuthorizationException $exception){
             return response()->json(["message"=>"insufficient balance"])->setStatusCode(406);
         }
-        $article = DB::transaction(function () use ($accountingService, $cost, $user, $request){
-            $article = $user->articles()->create([
-                'title' => $request->input('article.title'),
-                'description' => $request->input('article.description'),
-                'body' => $request->input('article.body'),
-            ]);
-            $accountingService->deductFromWallet($user->id, $cost->articleCost($user->id));
-            $this->createInvoice($user, $cost->articleCost($user->id), $article);
-
-
-            return $article;
-        });
-
 
         $inputTags = $request->input('article.tagList');
 
@@ -132,10 +121,6 @@ class ArticleController extends ApiController
         return $this->respondSuccess();
     }
 
-    protected function checkBalance(Authenticatable $user, AccountingService $accountingService, $cost): bool
-    {
-        return $accountingService->userBalance($user->id) >= $cost;
-    }
 
 
 }
