@@ -2,35 +2,13 @@
 
 namespace App\UseCases;
 
-use App\Concerns\CreatesInvoice;
-use App\Http\Requests\Api\CreateArticle;
-use App\Services\AccountingService;
-use App\Services\CostService;
 use App\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 
-class ArticleCreation
+class ArticleCreation extends BaseUseCase
 {
-    use CreatesInvoice;
-
-    /**
-     * @var AccountingService
-     */
-    protected $accountingService;
-
-    /**
-     * @var CostService
-     */
-    protected $costService;
-
-    public function __construct(AccountingService $accountingService, CostService $costService)
-    {
-        $this->accountingService = $accountingService;
-        $this->costService       = $costService;
-    }
-
     public function fire(User $user, array $data)
     {
         if (!$this->checkBalance($user, $this->costService->articleCost($user->id))) {

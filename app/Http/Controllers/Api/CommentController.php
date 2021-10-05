@@ -10,6 +10,8 @@ use App\Http\Requests\Api\DeleteComment;
 use App\RealWorld\Transformers\CommentTransformer;
 use App\Services\AccountingService;
 use App\Services\CostService;
+use App\UseCases\CommentCreation;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 class CommentController extends ApiController
@@ -33,6 +35,7 @@ class CommentController extends ApiController
      * Get all the comments of the article given by its slug.
      *
      * @param Article $article
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Article $article)
@@ -47,26 +50,20 @@ class CommentController extends ApiController
      *
      * @param CreateComment $request
      * @param Article $article
+     *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(CreateComment $request, Article $article, CostService $costService, AccountingService $accountingService)
-    {
-        $commentCost = $costService->commentCost(auth()->id());
-        if (! $this->checkBalance(auth()->id() ,$accountingService, $commentCost)){
-            return response()->json(["message"=>"insufficient balance"])->setStatusCode(406);
+    public function store(
+        CreateComment $request,
+        CommentCreation $commentCreation,
+        Article $article
+    ) {
+        try {
+            $comment = $commentCreation->fire(auth()->user(), $request->all(), $article);
+        } catch (AuthorizationException $exception) {
+            return response()->json(["message" => "insufficient balance"])->setStatusCode(406);
         }
 
-        $comment = DB::transaction(function () use ($accountingService, $commentCost, $article, $request) {
-            $comment = $article->comments()->create([
-                'body'    => $request->input('comment.body'),
-                'user_id' => auth()->id(),
-            ]);
-
-            $this->deductCommentCost($commentCost, $accountingService);
-            $this->createInvoice(auth()->user(), $commentCost, $comment);
-
-            return $comment;
-        });
         return $this->respondWithTransformer($comment);
     }
 
@@ -76,27 +73,14 @@ class CommentController extends ApiController
      * @param DeleteComment $request
      * @param $article
      * @param Comment $comment
+     *
      * @return \Illuminate\Http\JsonResponse
+     * @throws \Exception
      */
     public function destroy(DeleteComment $request, $article, Comment $comment)
     {
         $comment->delete();
 
         return $this->respondSuccess();
-    }
-
-    /**
-     * @param $commentCost
-     * @param AccountingService $accountingService
-     */
-    protected function deductCommentCost($commentCost, AccountingService $accountingService)
-    {
-        $commentCost && $accountingService->deductFromWallet(auth()->id(), $commentCost);
-
-    }
-
-    protected function checkBalance(int $id, AccountingService $accountingService, int $commentCost)
-    {
-        return $accountingService->userBalance($id) >= $commentCost;
     }
 }
