@@ -2,29 +2,29 @@
 
 namespace App\Services;
 
-use App\Transaction;
-use Illuminate\Support\Facades\DB;
+use App\Contracts\TransactionRepositoryInterface;
 
 class AccountingService
 {
+    /**
+     * @var TransactionRepositoryInterface
+     */
+    protected $transactionRepository;
+
+    public function __construct(TransactionRepositoryInterface $transactionRepository)
+    {
+        $this->transactionRepository = $transactionRepository;
+    }
+
     public function userBalance($user_id): int
     {
-        $records = DB::table("transactions")
-          ->select(DB::raw("SUM(balance) as balance"))
-          ->where("user_id", $user_id)
-            ->groupBy("user_id");
-
-        $item = $records->get()->first();
-        if (! $item)
-            return 0;
-
-        return -$item->balance;
+        return  $this->transactionRepository->userBalance($user_id);
 
     }
 
     public function chargeWallet($user_id, $amount): void
     {
-        Transaction::create([
+        $this->transactionRepository->create([
             "user_id" => $user_id,
             "credit"=>$amount,
             "balance" => -$amount
@@ -34,7 +34,7 @@ class AccountingService
 
     public function deductFromWallet($user_id, int $amount): void
     {
-        Transaction::create([
+        $this->transactionRepository->create([
             "user_id" => $user_id,
             "debt"=>$amount,
             "balance" => $amount

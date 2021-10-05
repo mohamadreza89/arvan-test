@@ -8,11 +8,8 @@ use App\Invoice;
 use App\Notifications\BalanceWarningNotification;
 use App\Services\AccountingService;
 use App\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AccountingServiceTest extends TestCase
@@ -27,7 +24,6 @@ class AccountingServiceTest extends TestCase
     public function setUp()
     {
         parent::setUp();
-        User::where("username", "testuser")->delete();
 
         /** @var AccountingService $accountingService */
         $this->accountingService = app(AccountingService::class);

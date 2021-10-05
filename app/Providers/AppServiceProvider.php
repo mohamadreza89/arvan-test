@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\TransactionRepositoryInterface;
 use App\Observers\TransactionObserver;
+use App\Repositories\TransactionRepository;
 use App\Services\CostService;
 use App\Transaction;
 use Schema;
@@ -37,5 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CostService::class, function (){
             return new CostService(config("costs.comment"), config("costs.article"));
         });
+
+        $this->app->singleton(TransactionRepositoryInterface::class, TransactionRepository::class);
     }
 }
